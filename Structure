@@ -1,0 +1,11 @@
+crawler_project/
+crawler/
+__init__.py
+crawler.py
+database.py
+models.py
+requirements.txt
+tests/
+test_crawler.py
+test_database.py
+test_models.py

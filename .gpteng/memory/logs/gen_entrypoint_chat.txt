@@ -1,0 +1,160 @@
+
+2024-06-13T09:44:05.025022
+================================ System Message ================================
+
+You will get information about a codebase that is currently on disk in the current folder.
+The user will ask you to write a script that runs the code in a specific way.
+You will answer with code blocks that include all the necessary terminal commands.
+Do not install globally. Do not use sudo.
+Do not explain the code, just give the commands.
+Do not use placeholders, use example values (like . for a folder argument) if necessary.
+
+
+================================ Human Message =================================
+
+
+        Make a unix script that
+        a) installs dependencies
+        b) runs all necessary parts of the codebase (in parallel if necessary)
+        
+Information about the codebase:
+
+```
+File: Structure
+1 crawler_project/
+2 crawler/
+3 __init__.py
+4 crawler.py
+5 database.py
+6 models.py
+7 requirements.txt
+8 tests/
+9 test_crawler.py
+10 test_database.py
+11 test_models.py
+
+File: requirements.txt
+1 beautifulsoup4
+2 requests
+3 sqlalchemy
+
+File: crawler/__init__.py
+1 # empty file
+
+File: crawler/crawler.py
+1 import requests
+2 from bs4 import BeautifulSoup
+3 from .models import Website, Page
+4 from .database import db_session
+5 
+6 class Crawler:
+7     def __init__(self, start_url):
+8         self.start_url = start_url
+9         self.visited = set()
+10 
+11     def crawl(self):
+12         self._crawl(self.start_url)
+13 
+14     def _crawl(self, url):
+15         if url in self.visited:
+16             return
+17         self.visited.add(url)
+18         response = requests.get(url)
+19         soup = BeautifulSoup(response.text, 'html.parser')
+20         pages = [a['href'] for a in soup.find_all('a', href=True)]
+21         for page in pages:
+22             self._crawl(page)
+23         website = Website(url=url)
+24         db_session.add(website)
+25         db_session.commit()
+26         for page in pages:
+27             page_obj = Page(url=page, website_id=website.id)
+28             db_session.add(page_obj)
+29         db_session.commit()
+
+File: crawler/database.py
+1 from sqlalchemy import create_engine, Column, Integer, String
+2 from sqlalchemy.ext.declarative import declarative_base
+3 from sqlalchemy.orm import sessionmaker
+4 
+5 engine = create_engine('sqlite:///crawler.db')
+6 Base = declarative_base()
+7 
+8 class Database:
+9     def __init__(self):
+10         self.Session = sessionmaker(bind=engine)
+11         self.session = self.Session()
+12 
+13     def create_all(self):
+14         Base.metadata.create_all(engine)
+15 
+16 db_session = Database()
+
+File: crawler/models.py
+1 from sqlalchemy import Column, Integer, String, ForeignKey
+2 from sqlalchemy.orm import relationship
+3 from sqlalchemy.ext.declarative import declarative_base
+4 
+5 Base = declarative_base()
+6 
+7 class Website(Base):
+8     __tablename__ = 'websites'
+9     id = Column(Integer, primary_key=True)
+10     url = Column(String, unique=True)
+11 
+12 class Page(Base):
+13     __tablename__ = 'pages'
+14     id = Column(Integer, primary_key=True)
+15     url = Column(String)
+16     website_id = Column(Integer, ForeignKey('websites.id'))
+17     website = relationship('Website', backref='pages')
+
+File: tests/test_crawler.py
+1 import unittest
+2 from crawler.crawler import Crawler
+3 
+4 class TestCrawler(unittest.TestCase):
+5     def test_crawl(self):
+6         crawler = Crawler('https://example.com')
+7         crawler.crawl()
+8         # assert something
+
+File: tests/test_database.py
+1 import unittest
+2 from crawler.database import db_session
+3 
+4 class TestDatabase(unittest.TestCase):
+5     def test_create_all(self):
+6         db_session.create_all()
+7         # assert something
+
+File: tests/test_models.py
+1 import unittest
+2 from crawler.models import Website, Page
+3 
+4 class TestModels(unittest.TestCase):
+5     def test_website(self):
+6         website = Website(url='https://example.com')
+7         # assert something
+
+```
+
+================================== Ai Message ==================================
+
+Here is the Unix script that installs dependencies and runs the necessary parts of the codebase:
+
+```bash
+#!/bin/bash
+
+# Install dependencies
+python -m pip install -r requirements.txt
+
+# Create database
+python -c "from crawler.database import db_session; db_session.create_all()"
+
+# Run crawler
+python -c "from crawler.crawler import Crawler; crawler = Crawler('https://example.com'); crawler.crawl()"
+
+# Run tests
+python -m unittest discover -v tests
+```
